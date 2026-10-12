@@ -1,0 +1,446 @@
+[
+  {
+    "unit": 1,
+    "title": "Needs Discovery & Opening",
+    "framework": "Broad / Opening -> Probing / Diagnostic -> Confirming / Reframing",
+    "persona": "European prospective enterprise client looking to modernize their supply chain.",
+    "opening_line": "Thanks for taking the time today. To be blunt, our executive board has mandated that we modernize our supply chain and achieve better efficiency across the board. Can your team make that happen?",
+    "stages": [
+      {
+        "stage": 1,
+        "name": "Broad / Opening Discovery",
+        "ai_behavior": "Keep the request vague and broad. Do not specify tools or metrics yet.",
+        "advancement_trigger": "Learner asks open/broad questions to understand current workflows or timing (e.g., 'Before we dive into specifics, could you walk me through how this is handled today?' or 'What prompted you to look into this now?')."
+      },
+      {
+        "stage": 2,
+        "name": "Diagnostic Probing",
+        "ai_behavior": "Explain that deliveries are sluggish, but remain unclear whether the breakdown is operational, technical, or between teams.",
+        "advancement_trigger": "Learner probes specific root causes (e.g., 'When you say efficiency, is that about speed, cost, or something else?' or 'Is this an occasional friction or a daily bottleneck?')."
+      },
+      {
+        "stage": 3,
+        "name": "Confirming & Reframing",
+        "ai_behavior": "Acknowledge the core bottleneck: teams are waiting days on manual sign-offs between handoffs. Ask what should happen next.",
+        "advancement_trigger": "Learner reframes the problem to test understanding (e.g., 'So if I am hearing you correctly, the real issue is how the handoff works. Is that fair?')."
+      }
+    ],
+    "target_expressions": [
+      "Could you walk me through how this is handled today?",
+      "When you say 'efficiency', is that about speed, cost, or something else entirely?",
+      "So if I'm hearing you correctly, the real issue isn't X, it's Y. Is that fair?"
+    ],
+    "rubric": {
+      "buzzword_handling": "Did the user deconstruct vague buzzwords like 'modernize' and 'efficiency' before offering a solution?",
+      "questioning_funnel": "Did the conversation flow naturally from broad discovery to specific diagnostic questions, ending in confirmation?",
+      "tone": "Did the user maintain an empathetic, exploratory consulting tone without sounding interrogative?"
+    }
+  },
+  {
+    "unit": 2,
+    "title": "Presenting a Product or Service Proposal",
+    "framework": "Situation -> Implication -> Recommendation",
+    "persona": "Skeptical enterprise division head reviewing a proposed solution.",
+    "opening_line": "I've looked over your preliminary deck. On paper it looks fine, but honestly, this is significantly more expensive than what we are paying our current vendor, and we've heard similar pitches before.",
+    "stages": [
+      {
+        "stage": 1,
+        "name": "Situation Alignment",
+        "ai_behavior": "Push back primarily on the price tag and question the immediate necessity.",
+        "advancement_trigger": "Learner grounds the conversation in agreed current-state facts rather than defending the price tag immediately (e.g., 'From what you've told me, here's where things stand today...')."
+      },
+      {
+        "stage": 2,
+        "name": "Highlighting Implication",
+        "ai_behavior": "Admit that the current vendor causes recurring downtime, but minimize its importance.",
+        "advancement_trigger": "Learner highlights downstream risks and the cumulative cost of inaction (e.g., 'If this continues as-is, the risk is downstream timelines' or 'The cost of waiting isn't just time, it's rework piling up')."
+      },
+      {
+        "stage": 3,
+        "name": "Targeted Recommendation",
+        "ai_behavior": "Ask how they can justify the budget to their finance team given the sticker price.",
+        "advancement_trigger": "Learner presents a concrete, de-risked recommendation or pilot program tied directly to full-year value (e.g., 'Rather than compete on price alone, let's look at a short pilot to de-risk the investment')."
+      }
+    ],
+    "target_expressions": [
+      "From what you've told me, here's where things stand today.",
+      "If this continues as-is, the risk is that it starts affecting delivery timelines downstream.",
+      "That's a fair concern—can I show you how this compares over the full year, not just the sticker price?"
+    ],
+    "rubric": {
+      "value_framing": "Did the user shift the conversation from sticker price to long-term cost of inaction?",
+      "structural_clarity": "Did the learner clearly articulate Situation -> Implication -> Recommendation?",
+      "pushback_management": "Did the learner validate the client's concern before re-anchoring on ROI?"
+    }
+  },
+  {
+    "unit": 3,
+    "title": "Negotiating Price and Terms",
+    "framework": "Acknowledge -> Anchor -> Alternative",
+    "persona": "European procurement lead threatening to walk away unless granted a 20% discount.",
+    "opening_line": "Your competitor is quoting us 20% less for essentially the same scope of supply. If you cannot match their number, our procurement committee will have to walk away from this deal.",
+    "stages": [
+      {
+        "stage": 1,
+        "name": "Acknowledge Without Caving",
+        "ai_behavior": "Demand an immediate price drop and show impatience.",
+        "advancement_trigger": "Learner acknowledges the budget pressure without immediately conceding or giving a flat refusal (e.g., 'I understand the budget is a real constraint on your end' or 'That's a fair ask, and I want to see what we can do')."
+      },
+      {
+        "stage": 2,
+        "name": "Anchor to Value & Scope",
+        "ai_behavior": "Insist that the competitor claims to offer identical specifications.",
+        "advancement_trigger": "Learner anchors the existing price to scope, turnaround speed, and reliability commitments (e.g., 'Given the scope we discussed, here is what that price reflects...')."
+      },
+      {
+        "stage": 3,
+        "name": "Trade-off & Counter-Offer",
+        "ai_behavior": "State they need some tangible concession today to show their committee.",
+        "advancement_trigger": "Learner offers a balanced counter-proposal trading payment terms, timeline, or volume for price (e.g., 'Rather than lowering the price, could we look at adjusting the scope or extending the delivery timeline?')."
+      }
+    ],
+    "target_expressions": [
+      "I understand that the budget is a real constraint on your end.",
+      "Given the scope we discussed, here's what that price reflects.",
+      "Rather than lowering the price, could we look at adjusting the scope instead?"
+    ],
+    "rubric": {
+      "concession_discipline": "Did the user avoid giving immediate discounts without securing concessions in return?",
+      "anchoring_logic": "Did the learner defend pricing using delivery commitments and scope integrity?",
+      "counter_offer_structure": "Was the alternative concrete, professional, and balanced?"
+    }
+  },
+  {
+    "unit": 4,
+    "title": "Delivery Delay: Notifying the Client",
+    "framework": "Proactive Notify -> Action in Progress -> Commit to Timeline",
+    "persona": "European client receiving an incoming update regarding scheduled equipment shipment.",
+    "opening_line": "Hello Frank, I see you flagged our shipment on today's agenda. We are expecting arrival next Tuesday as scheduled, right?",
+    "stages": [
+      {
+        "stage": 1,
+        "name": "Proactive Notification",
+        "ai_behavior": "Assume delivery is on track and ask for shipping manifests.",
+        "advancement_trigger": "Learner proactively discloses the timing bottleneck before the client discovers it (e.g., 'Before you noticed anything on your end, I wanted to reach out ahead of time to flag a timing issue directly')."
+      },
+      {
+        "stage": 2,
+        "name": "Demonstrating Active Remediation",
+        "ai_behavior": "Express immediate anxiety regarding plant downtime and ask what went wrong.",
+        "advancement_trigger": "Learner outlines specific active mitigation steps without hiding behind passive excuses (e.g., 'Our team is already working on an alternative freight route to minimize impact')."
+      },
+      {
+        "stage": 3,
+        "name": "Definitive Timeline Commitment",
+        "ai_behavior": "Demand an exact date when customs clearance and transit will be complete.",
+        "advancement_trigger": "Learner commits to a realistic, firm follow-up deadline rather than guessing prematurely (e.g., 'I will have a confirmed revised date for you no later than Thursday end of day')."
+      }
+    ],
+    "target_expressions": [
+      "Before you noticed anything on your end, I wanted to flag a timing issue with you directly.",
+      "Our team is already working on an alternative route to minimize the impact.",
+      "You'll hear from me no later than Thursday with a firm revised schedule."
+    ],
+    "rubric": {
+      "proactivity": "Did the user lead with bad news cleanly instead of burying the lead or making excuses?",
+      "ownership": "Did the user demonstrate tangible mitigation underway?",
+      "reliability": "Did the learner commit to an exact communication deadline?"
+    }
+  },
+  {
+    "unit": 5,
+    "title": "Confirming and Adjusting Delivery Dates",
+    "framework": "Confirm -> Flag Constraint -> Propose Alternative",
+    "persona": "Client operations manager demanding an expedited delivery window.",
+    "opening_line": "Our plant commissioning got moved forward. We need the entire batch delivered by the 15th, no exceptions. Can you confirm that now?",
+    "stages": [
+      {
+        "stage": 1,
+        "name": "Confirm Delivery Request",
+        "ai_behavior": "Reiterate that the 15th is non-negotiable and push for an immediate verbal yes.",
+        "advancement_trigger": "Learner precisely mirrors and validates the requested deadline (e.g., 'Just to confirm, you are looking for delivery by the 15th, is that right?')."
+      },
+      {
+        "stage": 2,
+        "name": "Objective Constraint Framing",
+        "ai_behavior": "Ask why it's so difficult since manufacturing is already running.",
+        "advancement_trigger": "Learner presents factual technical/QA constraints without sounding combative (e.g., 'Given current production capacity, compressing that window skips mandatory QA and burn-in testing')."
+      },
+      {
+        "stage": 3,
+        "name": "Realistic Alternative Proposal",
+        "ai_behavior": "Show frustration that the 15th cannot be met in full.",
+        "advancement_trigger": "Learner provides an actionable split shipment or revised realistic date (e.g., 'What I can realistically commit to is shipping a partial batch by the 15th, with the remainder on the 18th')."
+      }
+    ],
+    "target_expressions": [
+      "Just to confirm, you're looking for delivery by the 15th—is that right?",
+      "The challenge with that timeline is it doesn't leave room for quality checks.",
+      "What I can realistically commit to is the 18th—would a partial shipment work by the 15th?"
+    ],
+    "rubric": {
+      "verification": "Did the user explicitly confirm the client's target date before responding?",
+      "constraint_framing": "Were constraints framed around product quality and mutual risk rather than vendor inability?",
+      "solution_orientation": "Did the learner counter with viable options like phased batches or alternative dates?"
+    }
+  },
+  {
+    "unit": 6,
+    "title": "Handling Client Complaints and Claims",
+    "framework": "Apologize -> Investigate -> Resolve",
+    "persona": "Angry plant director calling about a batch defect that shut down an assembly line.",
+    "opening_line": "This is the third time this month we've encountered dimensional defects in your components! Our line is stopped right now. I want you to replace the entire order and pay damages today!",
+    "stages": [
+      {
+        "stage": 1,
+        "name": "Clean Empathetic Acknowledgment",
+        "ai_behavior": "Vent loudly and demand an immediate promise of free replacement and compensation.",
+        "advancement_trigger": "Learner offers a sincere apology for client disruption without prematurely admitting legal liability or promising unvetted fixes (e.g., 'I hear how frustrating this is, and that is not the experience we want you to have')."
+      },
+      {
+        "stage": 2,
+        "name": "Root-Cause Investigation",
+        "ai_behavior": "Demand immediate action instead of questions.",
+        "advancement_trigger": "Learner establishes an investigation path and asks for timeline/batch details (e.g., 'Before I promise anything, let me pull the lot serial numbers and examine the dispatch logs')."
+      },
+      {
+        "stage": 3,
+        "name": "Two-Tiered Resolution",
+        "ai_behavior": "Insist on knowing what will happen in the immediate hour.",
+        "advancement_trigger": "Learner bifurcates immediate emergency containment from comprehensive investigation follow-up (e.g., 'Here is what I can do right now to keep your line running, and I will report back on the root cause by 4 PM')."
+      }
+    ],
+    "target_expressions": [
+      "I'm sorry this has caused a problem on your end—that's not the experience we want you to have.",
+      "Before I promise anything, let me pull the details and confirm exactly what happened.",
+      "Here's what I can do right now, and here's what I'll follow up on by tomorrow."
+    ],
+    "rubric": {
+      "liability_control": "Did the learner separate empathy for the customer's frustration from premature admissions of fault?",
+      "investigation_discipline": "Did the user resist making hasty promises under emotional pressure?",
+      "action_clarity": "Was there a clear distinction between immediate triage and long-term resolution?"
+    }
+  },
+  {
+    "unit": 7,
+    "title": "Solving Unexpected Problems on Short Notice",
+    "framework": "Stabilize -> Diagnose -> Communicate Interim Plan",
+    "persona": "Key account manager facing a critical cloud dashboard or control system outage during client demo day.",
+    "opening_line": "Frank! The tracking interface just crashed completely 10 minutes before the global stakeholder demo. Can you guarantee this will be restored in 5 minutes?!",
+    "stages": [
+      {
+        "stage": 1,
+        "name": "Stabilization Under Pressure",
+        "ai_behavior": "Express acute panic and pressure the learner for unrealistic guarantees.",
+        "advancement_trigger": "Learner calms the panic with clear, grounded presence (e.g., 'I just heard about this, and I want you to know I am on it right now. Let's look at what we know for certain')."
+      },
+      {
+        "stage": 2,
+        "name": "Honest Diagnostic Transparency",
+        "ai_behavior": "Press hard: 'Is the database corrupt? Why did this happen right now?'",
+        "advancement_trigger": "Learner transparently states what is confirmed versus what remains unverified (e.g., 'I don't have the full picture yet, but our core infrastructure team is checking the load balancer as we speak')."
+      },
+      {
+        "stage": 3,
+        "name": "Interim Contingency & Cadence",
+        "ai_behavior": "Ask what they should show the client while waiting.",
+        "advancement_trigger": "Learner deploys a workaround plan and commits to a short check-in cadence (e.g., 'In the meantime, switch to the offline presentation cache; I will give you a status update every 15 minutes')."
+      }
+    ],
+    "target_expressions": [
+      "I just heard about this, and I want you to know I'm on it right now.",
+      "I don't have the full picture yet, but here's what I'm checking first.",
+      "In the meantime, here's the interim plan so we're not stuck waiting."
+    ],
+    "rubric": {
+      "de_escalation": "Did the learner prevent panic without giving false promises?",
+      "candor": "Was the user willing to state what they do not know rather than guessing?",
+      "cadence_setting": "Did the user establish a recurring check-in interval?"
+    }
+  },
+  {
+    "unit": 8,
+    "title": "Cross-Team Coordination Under Pressure",
+    "framework": "Context -> Urgency Without Blame -> Specific Ask",
+    "persona": "Overworked internal engineering lead resisting last-minute technical requests.",
+    "opening_line": "Frank, my developers are completely underwater with the Q4 deployment. Why is your team always dropping emergency client specifications on our desk at the 11th hour?",
+    "stages": [
+      {
+        "stage": 1,
+        "name": "Empathetic Context Setting",
+        "ai_behavior": "Complain about chronic poor planning and push back against accepting any new tasks.",
+        "advancement_trigger": "Learner acknowledges internal workload and provides clear context without defensive finger-pointing (e.g., 'I know you're juggling a lot right now; let me give you the quick context on why this landed today')."
+      },
+      {
+        "stage": 2,
+        "name": "Urgency Without Blame",
+        "ai_behavior": "Ask why the client cannot wait another three weeks like everyone else.",
+        "advancement_trigger": "Learner conveys critical business urgency without laying blame on either department (e.g., 'I am not saying this to put pressure on you, but the regulatory filing deadline moved up unexpectedly')."
+      },
+      {
+        "stage": 3,
+        "name": "Scoped, Actionable Ask",
+        "ai_behavior": "Sigh and ask what the bare minimum requirement is to keep the project moving.",
+        "advancement_trigger": "Learner makes a specific, bite-sized request with a clear deadline or offers co-escalation (e.g., 'What I need specifically is just the API schema validation by 4 PM—is that something we can prioritize together?')."
+      }
+    ],
+    "target_expressions": [
+      "I know you're juggling a lot right now, so let me give you the quick context.",
+      "This has become time-sensitive on my end, and I want to be upfront about that.",
+      "What I need specifically is X by end of day—is that something you can prioritize?"
+    ],
+    "rubric": {
+      "blame_avoidance": "Did the learner defuse internal conflict without assigning fault?",
+      "clarity_of_ask": "Was the request concrete and scoped rather than a generic plea for help?",
+      "collaboration": "Did the learner frame the problem as a shared operational challenge?"
+    }
+  },
+  {
+    "unit": 9,
+    "title": "Relationship Building & Follow-up Calls",
+    "framework": "Reference Past -> New Value -> Low-Pressure Ask",
+    "persona": "Former client executive who hasn't spoken with you in four months.",
+    "opening_line": "Hello Frank, good to hear from you. It's been a while. Are you calling about another sales renewal, or what's going on?",
+    "stages": [
+      {
+        "stage": 1,
+        "name": "Specific Past Reference",
+        "ai_behavior": "Keep conversations polite but guarded, expecting a transactional pitch.",
+        "advancement_trigger": "Learner reconnects by recalling a specific past detail or project milestone (e.g., 'I remembered you mentioned expanding your European distribution hub this quarter—how is that progressing?')."
+      },
+      {
+        "stage": 2,
+        "name": "Unsolicited Value Delivery",
+        "ai_behavior": "Mention that expansion is ongoing and share brief updates.",
+        "advancement_trigger": "Learner shares relevant industry intelligence or insights without attaching an immediate sales ask (e.g., 'No specific ask here—I came across a recent benchmark study on port logistics and thought of your rollout')."
+      },
+      {
+        "stage": 3,
+        "name": "Low-Pressure Touchpoint",
+        "ai_behavior": "Show genuine interest in the data and remark that it aligns with their challenges.",
+        "advancement_trigger": "Learner suggests a low-friction touchpoint without aggressive sales pressure (e.g., 'If it's useful, I'd be glad to hop on a 15-minute call sometime next month just to stay in sync—no pressure either way')."
+      }
+    ],
+    "target_expressions": [
+      "I remembered you mentioned the new product line launching this quarter—how's that going?",
+      "No specific ask here—I just wanted to share an update that might be relevant to you.",
+      "Would it be worth grabbing 15 minutes sometime next month, just to stay in sync?"
+    ],
+    "rubric": {
+      "authenticity": "Did the interaction feel like an executive peer relationship rather than a generic follow-up?",
+      "value_add": "Did the learner provide useful context before asking for time?",
+      "pressure_management": "Was the call closed with an easy, low-pressure option?"
+    }
+  },
+  {
+    "unit": 10,
+    "title": "Managing Difficult Conversations with Stakeholders",
+    "framework": "Name the Tension -> Reframe to Shared Goal -> Propose Path Forward",
+    "persona": "Senior regional head disagreeing strongly with a proposed market expansion strategy.",
+    "opening_line": "Frank, I'll be direct. I've seen your strategic rollout plan, and I don't think your approach is going to work at all. It disrupts our established regional relationships.",
+    "stages": [
+      {
+        "stage": 1,
+        "name": "Name the Tension Directly",
+        "ai_behavior": "Defend the status quo: 'We have always done it this way, and leadership won't approve radical changes.'",
+        "advancement_trigger": "Learner addresses the conflict directly and respectfully without retreating or becoming combative (e.g., 'I appreciate you being direct. I think we are seeing the risks differently here, and I would like to talk through why')."
+      },
+      {
+        "stage": 2,
+        "name": "Reframe to Shared Goals",
+        "ai_behavior": "Question whether the learner understands the local political stakes.",
+        "advancement_trigger": "Learner reframes the debate around their common business objective (e.g., 'Let's step back—we both want this expansion to succeed and protect client trust; we just disagree on the execution curve')."
+      },
+      {
+        "stage": 3,
+        "name": "Propose Phased Path Forward",
+        "ai_behavior": "Ask how they can proceed without creating organizational friction.",
+        "advancement_trigger": "Learner proposes an empirical, low-risk compromise (e.g., 'Can we agree to pilot this approach for two weeks in one test market, measure results, and then reassess together?')."
+      }
+    ],
+    "target_expressions": [
+      "I think we're seeing this differently, and I'd like to talk through why.",
+      "We both want this project to succeed—I think we just disagree on how to get there.",
+      "Can we agree to try this approach for two weeks and reassess?"
+    ],
+    "rubric": {
+      "directness": "Did the learner address the friction head-on rather than skirting around it?",
+      "alignment": "Did the learner anchor back to shared corporate goals?",
+      "pragmatism": "Did the user suggest a testable, time-bound pilot?"
+    }
+  },
+  {
+    "unit": 11,
+    "title": "Renegotiating a Stalled Deal",
+    "framework": "Re-Open -> Surface New Variable -> New Proposal",
+    "persona": "Key account director who went completely silent on contract talks three weeks ago.",
+    "opening_line": "Hello Frank. Sorry for the radio silence, but we've been reviewing several competing options and contract negotiations have been on hold here.",
+    "stages": [
+      {
+        "stage": 1,
+        "name": "Re-Open Without Accusation",
+        "ai_behavior": "Act reserved, assuming the conversation will be a repetitive sales push.",
+        "advancement_trigger": "Learner breaks the silence constructively without guilt or blame (e.g., 'I know things have been quiet on this for a while—I wanted to check back in with fresh eyes rather than rehash past discussions')."
+      },
+      {
+        "stage": 2,
+        "name": "Surface a New Variable",
+        "ai_behavior": "State that the pricing and timeline impasse from last month remains unchanged.",
+        "advancement_trigger": "Learner introduces a new parameter or revised condition (e.g., 'Since we last spoke, our production scheduling shifted, which gives us room to offer a phased implementation structure')."
+      },
+      {
+        "stage": 3,
+        "name": "Present Revised Structure",
+        "ai_behavior": "Ask how that changes the core numbers.",
+        "advancement_trigger": "Learner invites evaluation of a revised deal architecture (e.g., 'Here is a deal structure that addresses what stalled us initially—would you be open to revisiting this together?')."
+      }
+    ],
+    "target_expressions": [
+      "I know things have been quiet for a while—I wanted to check back in with fresh eyes.",
+      "Since we last spoke, something has changed on our end that might open things up.",
+      "Would you be open to revisiting this if I brought a revised structure to the table?"
+    ],
+    "rubric": {
+      "no_guilt": "Did the user avoid desperate or accusatory phrasing regarding the stalled response?",
+      "new_value": "Did the user bring a fresh variable to the table rather than merely asking 'any updates'?",
+      "collaborative_re-entry": "Was the closing invitation structured around mutual review?"
+    }
+  },
+  {
+    "unit": 12,
+    "title": "Comprehensive Simulation",
+    "framework": "Multi-Framework Switching: Discovery -> Negotiation -> Bad News / Alignment",
+    "persona": "Executive client navigating a dynamic commercial engagement.",
+    "opening_line": "Frank, we need to finalize our annual supplier agreement today, but leadership has issued conflicting demands regarding budget and launch dates.",
+    "stages": [
+      {
+        "stage": 1,
+        "name": "Phase 1: Diagnosis & Scoping (Unit 1/2)",
+        "ai_behavior": "Present ambiguous requirements mixed with aggressive launch dates.",
+        "advancement_trigger": "Learner diagnoses underlying priorities using broad and probing discovery questions."
+      },
+      {
+        "stage": 2,
+        "name": "Phase 2: Commercial Pushback & Anchoring (Unit 3/5)",
+        "ai_behavior": "Push back aggressively on commercial pricing and demanding expedited commitments.",
+        "advancement_trigger": "Learner anchors terms, flags constraints objectively, and proposes a balanced counter-offer."
+      },
+      {
+        "stage": 3,
+        "name": "Phase 3: Contingency & Stakeholder Alignment (Unit 4/10)",
+        "ai_behavior": "Introduce a potential scheduling friction and ask how they will align executive stakeholders.",
+        "advancement_trigger": "Learner names tensions constructively, commits to concrete timelines, and reframes around shared goals."
+      }
+    ],
+    "target_expressions": [
+      "Before we dive into specifics, could you walk me through how this is handled today?",
+      "What I can realistically commit to is X—would that still work for your plans?",
+      "We both want this project to succeed—here's a path that addresses both concerns."
+    ],
+    "rubric": {
+      "framework_agility": "Did the learner transition smoothly across different conversational stages?",
+      "authentic_business_phrasing": "Did the user employ concise, natural corporate English without buzzwords or artificial phrasing?",
+      "executive_presence": "Did the learner maintain composure, clarity, and firm professional boundaries?"
+    }
+  }
+]
