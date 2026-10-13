@@ -1,413 +1,1113 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Executive Business English Simulator</title>
-  <!-- Tailwind CSS -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Business English Simulator - Hyosung Advanced Edition</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- React & ReactDOM -->
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <!-- Babel for inline JSX -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-</head>
-<body class="bg-slate-950 text-slate-100 min-h-screen">
-  <div id="root"></div>
-
-  <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
-
-    function App() {
-      const [apiKey, setApiKey] = useState(() => localStorage.getItem("gemini_api_key") || "");
-      const [scenarios, setScenarios] = useState([]);
-      const [currentUnit, setCurrentUnit] = useState(1);
-      const [currentStage, setCurrentStage] = useState(1);
-      const [messages, setMessages] = useState([]);
-      const [isListening, setIsListening] = useState(false);
-      const [inputText, setInputText] = useState("");
-      const [isLoading, setIsLoading] = useState(false);
-      const [feedback, setFeedback] = useState(null);
-      const [isGeneratingFeedback, setIsGeneratingFeedback] = useState(false);
-
-      const recognitionRef = useRef(null);
-      const chatEndRef = useRef(null);
-
-      // Load scenarios.json
-      useEffect(() => {
-        fetch("./scenarios.json")
-          .then((res) => res.json())
-          .then((data) => {
-            setScenarios(data);
-            initScenario(data[0]);
-          })
-          .catch((err) => console.error("Failed to load scenarios.json", err));
-      }, []);
-
-      // Auto-scroll chat
-      useEffect(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, [messages]);
-
-      // Initialize Speech Recognition
-      useEffect(() => {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SpeechRecognition) {
-          const recognition = new SpeechRecognition();
-          recognition.continuous = false;
-          recognition.interimResults = false;
-          recognition.lang = "en-US";
-
-          recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            setInputText(transcript);
-            setIsListening(false);
-          };
-
-          recognition.onerror = () => setIsListening(false);
-          recognition.onend = () => setIsListening(false);
-
-          recognitionRef.current = recognition;
-        }
-      }, []);
-
-      const activeScenario = scenarios.find((s) => s.unit === currentUnit) || scenarios[0];
-
-      const initScenario = (scenario) => {
-        if (!scenario) return;
-        setCurrentStage(1);
-        setFeedback(null);
-        setMessages([
-          {
-            role: "assistant",
-            content: scenario.opening_line,
-            stage: 1
-          }
-        ]);
-        speakText(scenario.opening_line);
-      };
-
-      const handleUnitChange = (unitNum) => {
-        const target = scenarios.find((s) => s.unit === Number(unitNum));
-        setCurrentUnit(Number(unitNum));
-        initScenario(target);
-      };
-
-      const speakText = (text) => {
-        if ("speechSynthesis" in window) {
-          window.speechSynthesis.cancel();
-          const cleanText = text.replace(/\[STAGE_\d+\]/g, "").replace(/\[SIMULATION_COMPLETE\]/g, "");
-          const utterance = new SpeechSynthesisUtterance(cleanText);
-          utterance.lang = "en-US";
-          utterance.rate = 0.95;
-          window.speechSynthesis.speak(utterance);
-        }
-      };
-
-      const toggleMic = () => {
-        if (!recognitionRef.current) {
-          alert("Speech recognition is not supported in this browser. Please use Chrome or Edge.");
-          return;
-        }
-        if (isListening) {
-          recognitionRef.current.stop();
-          setIsListening(false);
-        } else {
-          setInputText("");
-          recognitionRef.current.start();
-          setIsListening(true);
-        }
-      };
-
-      const handleSendMessage = async () => {
-        if (!inputText.trim() || !apiKey) return;
-
-        const userMsg = { role: "user", content: inputText, stage: currentStage };
-        const updatedMessages = [...messages, userMsg];
-        setMessages(updatedMessages);
-        setInputText("");
-        setIsLoading(true);
-
-        const currentStageData = activeScenario.stages.find((s) => s.stage === currentStage) || activeScenario.stages[activeScenario.stages.length - 1];
-
-        const systemInstruction = `
-You are acting as the enterprise counterpart in a corporate business English simulation.
-Persona: ${activeScenario.persona}
-Unit Topic: ${activeScenario.title}
-Framework: ${activeScenario.framework}
-
-CURRENT STAGE: Stage ${currentStage} (${currentStageData.name})
-STAGE BEHAVIOR: ${currentStageData.ai_behavior}
-STAGE ADVANCEMENT TRIGGER: ${currentStageData.advancement_trigger}
-
-RULES:
-1. Stay in character as a business professional. Be realistic, candid, and direct.
-2. If the user meets the stage advancement trigger, advance to the next stage in your logic.
-3. If advancing to stage 2, prefix your response with [STAGE_2].
-4. If advancing to stage 3, prefix your response with [STAGE_3].
-5. If stage 3 requirements are met and the conversation reaches a natural close, append [SIMULATION_COMPLETE] at the end.
-6. Keep each spoken turn concise (2 to 4 sentences maximum), authentic to executive conversation.
-        `;
-
-        try {
-          const contents = [
-            { role: "user", parts: [{ text: systemInstruction }] },
-            ...updatedMessages.map((m) => ({
-              role: m.role === "assistant" ? "model" : "user",
-              parts: [{ text: m.content }]
-            }))
-          ];
-
-          const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ contents })
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            hyosung: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              200: '#bfdbfe',
+              500: '#3b82f6',
+              600: '#1d4ed8',
+              700: '#1e40af',
+              800: '#1e3a8a',
+              900: '#172554',
             }
-          );
-
-          const data = await response.json();
-          let replyText = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response received.";
-
-          // Detect Stage Updates
-          let newStage = currentStage;
-          if (replyText.includes("[STAGE_2]") && currentStage < 2) newStage = 2;
-          if (replyText.includes("[STAGE_3]") && currentStage < 3) newStage = 3;
-          setCurrentStage(newStage);
-
-          const isCompleted = replyText.includes("[SIMULATION_COMPLETE]");
-          const cleanedReply = replyText.replace(/\[STAGE_\d+\]/g, "").replace(/\[SIMULATION_COMPLETE\]/g, "").trim();
-
-          const assistantMsg = { role: "assistant", content: cleanedReply, stage: newStage };
-          const finalMessages = [...updatedMessages, assistantMsg];
-          setMessages(finalMessages);
-          speakText(cleanedReply);
-
-          if (isCompleted) {
-            triggerFeedback(finalMessages);
           }
-        } catch (error) {
-          console.error(error);
-          alert("Error calling Gemini API. Please check your API key and connection.");
-        } finally {
-          setIsLoading(false);
         }
-      };
-
-      const triggerFeedback = async (transcript) => {
-        setIsGeneratingFeedback(true);
-        const rubricText = JSON.stringify(activeScenario.rubric, null, 2);
-
-        const prompt = `
-You are an executive communication coach evaluating a corporate learner's performance.
-Scenario: ${activeScenario.title}
-Target Framework: ${activeScenario.framework}
-Rubric:
-${rubricText}
-
-Transcript:
-${transcript.map((m) => `${m.role.toUpperCase()}:${m.content}`).join("\n")}
-
-Provide an objective executive coaching debrief in structured JSON with the following format:
-{
-  "overallScore": "Score out of 5",
-  "frameworkAssessment": "Did the learner properly follow the unit framework steps?",
-  "strengths": ["Point 1", "Point 2"],
-  "growthAreas": ["Point 1", "Point 2"],
-  "executiveRewrites": [
-    {
-      "original": "Exact quote of what the learner said",
-      "executiveAlternative": "Polished, authentic executive phrasing alternative",
-      "reasoning": "Why this alternative lands with higher executive presence"
+      }
     }
-  ]
-}
-Return ONLY valid JSON.
-        `;
+  </script>
+  <style>
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 9999px;
+    }
+    .pulse-ring {
+      animation: pulseGlow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulseGlow {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.08); opacity: 0.7; }
+    }
+    .fade-in {
+      animation: fadeIn 0.2s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-blue-600 selection:text-white">
 
-        try {
-          const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-            }
-          );
-          const data = await response.json();
-          let rawJson = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-          rawJson = rawJson.replace(/```json/g, "").replace(/```/g, "").trim();
-          setFeedback(JSON.parse(rawJson));
-        } catch (err) {
-          console.error("Feedback generation failed", err);
-        } finally {
-          setIsGeneratingFeedback(false);
-        }
-      };
+  <!-- Header Bar -->
+  <header class="bg-slate-800/90 backdrop-blur border-b border-slate-700/80 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      
+      <!-- Brand & Status -->
+      <div class="flex items-center gap-3">
+        <div class="bg-gradient-to-br from-hyosung-600 to-blue-500 text-white font-black text-base sm:text-lg px-2.5 py-1 rounded shadow-md tracking-wider shrink-0">
+          HYOSUNG
+        </div>
+        <div class="border-l border-slate-700 pl-3">
+          <div class="flex items-center gap-2">
+            <h1 class="text-xs sm:text-sm font-bold text-white tracking-wide">Business English Simulator</h1>
+            <span class="text-2xs font-semibold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30">AI Live Role-Play</span>
+          </div>
+          <p class="text-2xs text-slate-400 truncate hidden sm:block">Interactive B2B Client Dialogue & Tough Objection Simulation</p>
+        </div>
+      </div>
 
-      return (
-        <div className="max-w-5xl mx-auto p-4 md:p-6 flex flex-col h-screen">
-          {/* Header & Settings */}
-          <header className="border-b border-slate-800 pb-4 mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-white">Executive Business English Simulator</h1>
-              <p className="text-xs text-slate-400">Situation-based Topic Discussion & Role-play</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <input
-                type="password"
-                placeholder="Paste Gemini API Key"
-                value={apiKey}
-                onChange={(e) => {
-                  setApiKey(e.target.value);
-                  localStorage.setItem("gemini_api_key", e.target.value);
-                }}
-                className="bg-slate-900 border border-slate-700 px-3 py-1.5 rounded text-xs w-44 focus:outline-none focus:border-indigo-500"
-              />
-              <select
-                value={currentUnit}
-                onChange={(e) => handleUnitChange(e.target.value)}
-                className="bg-slate-900 border border-slate-700 px-3 py-1.5 rounded text-xs text-white focus:outline-none focus:border-indigo-500"
-              >
-                {scenarios.map((s) => (
-                  <option key={s.unit} value={s.unit}>
-                    Unit {s.unit}: {s.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </header>
+      <!-- Action Utilities -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- API Status Indicator -->
+        <div id="apiStatusBadge" onclick="openSettingsModal()" class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-medium border bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20 transition">
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span id="apiStatusText">Key Setup Needed</span>
+        </div>
 
-          {/* Scenario Status Bar */}
-          {activeScenario && (
-            <div className="bg-slate-900 border border-slate-800 rounded-lg p-3 mb-4 flex flex-col md:flex-row md:items-center justify-between text-xs gap-2">
-              <div>
-                <span className="text-indigo-400 font-semibold uppercase tracking-wider mr-2">Framework:</span>
-                <span className="text-slate-300">{activeScenario.framework}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400">Stage:</span>
-                <span className={`px-2 py-0.5 rounded text-xs font-semibold ${currentStage === 1 ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-800 text-slate-400'}`}>1. Discovery</span>
-                <span className={`px-2 py-0.5 rounded text-xs font-semibold ${currentStage === 2 ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-800 text-slate-400'}`}>2. Diagnostic</span>
-                <span className={`px-2 py-0.5 rounded text-xs font-semibold ${currentStage === 3 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-400'}`}>3. Alignment</span>
-              </div>
-            </div>
-          )}
+        <!-- Audio Output Toggle -->
+        <button id="ttsToggleBtn" onclick="toggleTTS()" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-2xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600 transition" title="Toggle AI voice readout">
+          <span id="ttsIcon">🔊</span>
+          <span class="hidden md:inline" id="ttsText">Voice: ON</span>
+        </button>
 
-          {/* Main Area */}
-          <div className="flex-1 overflow-hidden flex flex-col md:flex-row gap-4">
-            {/* Conversation Log */}
-            <div className="flex-1 bg-slate-900/60 border border-slate-800 rounded-lg flex flex-col overflow-hidden">
-              <div className="flex-1 p-4 overflow-y-auto space-y-4 text-sm">
-                {messages.map((m, idx) => (
-                  <div key={idx} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
-                    <span className="text-[10px] text-slate-400 mb-1 capitalize">
-                      {m.role === 'user' ? 'You' : activeScenario?.persona || 'Client'}
-                    </span>
-                    <div className={`p-3 rounded-lg max-w-[85%] leading-relaxed ${
-                      m.role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700'
-                    }`}>
-                      {m.content}
-                    </div>
-                  </div>
-                ))}
-                {isLoading && (
-                  <div className="text-xs text-slate-400 italic">Client is replying...</div>
-                )}
-                <div ref={chatEndRef} />
-              </div>
+        <!-- Settings Button -->
+        <button onclick="openSettingsModal()" class="flex items-center gap-1.5 bg-hyosung-600 hover:bg-hyosung-500 text-white font-medium text-xs px-3 py-1.5 rounded-lg shadow-sm transition">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <span class="hidden sm:inline">Settings</span>
+        </button>
+      </div>
+    </div>
+  </header>
 
-              {/* Input & Voice Controls */}
-              <div className="p-3 border-t border-slate-800 bg-slate-900/90 flex items-center gap-2">
-                <button
-                  onClick={toggleMic}
-                  className={`p-2.5 rounded-full transition ${
-                    isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
-                  }`}
-                  title={isListening ? "Listening..." : "Click to Speak"}
-                >
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-                  </svg>
-                </button>
-                <input
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-                  placeholder={isListening ? "Listening to your voice..." : "Type or speak your executive response..."}
-                  className="flex-1 bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
-                />
-                <button
-                  onClick={handleSendMessage}
-                  disabled={isLoading}
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2.5 rounded font-medium disabled:opacity-50"
-                >
-                  Send
-                </button>
-                <button
-                  onClick={() => triggerFeedback(messages)}
-                  disabled={messages.length <= 1 || isGeneratingFeedback}
-                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs px-3 py-2.5 rounded disabled:opacity-40"
-                  title="Generate Scorecard"
-                >
-                  {isGeneratingFeedback ? "Evaluating..." : "Debrief"}
-                </button>
-              </div>
-            </div>
+  <!-- Main Grid Layout -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-            {/* Target Phrases & Scorecard Panel */}
-            <div className="w-full md:w-80 flex flex-col gap-4 overflow-y-auto">
-              {/* Target Phrasing Helper */}
-              <div className="bg-slate-900 border border-slate-800 rounded-lg p-3 text-xs">
-                <h3 className="font-semibold text-slate-300 mb-2 uppercase tracking-wider text-[11px]">Recommended Phrasing</h3>
-                <ul className="space-y-2 text-slate-400">
-                  {activeScenario?.target_expressions?.map((expr, idx) => (
-                    <li key={idx} className="bg-slate-950 p-2 rounded border border-slate-800/80 italic">
-                      "{expr}"
-                    </li>
-                  ))}
-                </ul>
-              </div>
+    <!-- Left Control Panel (Scenario & Persona Configuration) -->
+    <aside class="lg:col-span-4 space-y-4">
+      
+      <!-- Scenario Selector Box -->
+      <div class="bg-slate-800 rounded-2xl border border-slate-700/80 p-5 shadow-lg space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-700">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+            Scenario Configuration
+          </h2>
+          <span class="text-2xs font-mono text-slate-400">12 Curricula</span>
+        </div>
 
-              {/* Feedback Scorecard */}
-              {feedback && (
-                <div className="bg-slate-900 border border-indigo-900/50 rounded-lg p-3 text-xs space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <span className="font-bold text-indigo-300">Executive Scorecard</span>
-                    <span className="bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded font-bold">
-                      {feedback.overallScore}
-                    </span>
-                  </div>
+        <!-- Preloaded Unit Select -->
+        <div>
+          <label class="block text-2xs font-bold uppercase text-slate-400 mb-1.5">Curriculum Unit</label>
+          <select id="scenarioSelect" onchange="loadSelectedScenario()" class="w-full text-xs font-semibold bg-slate-900 border border-slate-600 rounded-xl px-3 py-2 text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <!-- Dynamically populated via JS -->
+          </select>
+        </div>
 
-                  <div>
-                    <span className="text-[11px] font-semibold text-slate-400 block mb-1">Framework Adherence</span>
-                    <p className="text-slate-300">{feedback.frameworkAssessment}</p>
-                  </div>
-
-                  <div>
-                    <span className="text-[11px] font-semibold text-slate-400 block mb-1">Polished Alternatives</span>
-                    <div className="space-y-2">
-                      {feedback.executiveRewrites?.map((rw, idx) => (
-                        <div key={idx} className="bg-slate-950 p-2 rounded border border-slate-800">
-                          <p className="text-red-400 line-through mb-1">"{rw.original}"</p>
-                          <p className="text-emerald-400 font-medium">"{rw.executiveAlternative}"</p>
-                          <p className="text-slate-500 text-[10px] mt-1">{rw.reasoning}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+        <!-- Role / Job Track Selector -->
+        <div>
+          <label class="block text-2xs font-bold uppercase text-slate-400 mb-1.5">Hyosung Job Track</label>
+          <div class="grid grid-cols-3 gap-1.5" id="jobTrackButtons">
+            <button onclick="setJobTrack('overseas')" id="track-overseas" class="track-btn py-1.5 px-2 text-2xs font-bold rounded-lg bg-blue-600 text-white transition truncate">Overseas</button>
+            <button onclick="setJobTrack('domestic')" id="track-domestic" class="track-btn py-1.5 px-2 text-2xs font-bold rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 transition truncate">Domestic</button>
+            <button onclick="setJobTrack('technical')" id="track-technical" class="track-btn py-1.5 px-2 text-2xs font-bold rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 transition truncate">Tech/R&D</button>
           </div>
         </div>
-      );
+
+        <!-- Client Persona Card -->
+        <div class="p-3.5 bg-slate-900/80 rounded-xl border border-slate-700 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-2xs font-bold uppercase text-blue-400" id="personaTitle">Client Persona</span>
+            <span class="text-2xs px-2 py-0.5 rounded bg-slate-800 text-slate-400" id="personaDifficulty">Demanding</span>
+          </div>
+          <p id="personaDesc" class="text-xs text-slate-300 leading-relaxed italic">
+            "Senior Procurement Director at a European utility holding company with strict zero-downtime penalties."
+          </p>
+        </div>
+
+        <!-- Client Pressure Objective -->
+        <div class="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-1 text-2xs">
+          <span class="font-bold text-amber-300 uppercase tracking-wider block">Today's Conversational Objective</span>
+          <p id="scenarioObjective" class="text-slate-300 leading-normal">
+            Apply the 3-stage framework to uncover root technical requirements without agreeing to an immediate price cut.
+          </p>
+        </div>
+
+        <!-- Reset / Restart Simulation Button -->
+        <div class="pt-2">
+          <button onclick="restartSimulation()" class="w-full flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 active:scale-[0.99] text-slate-200 text-xs font-semibold py-2.5 rounded-xl border border-slate-600 transition">
+            <span>↺ Restart Conversation</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Coaching Reference Card -->
+      <div class="bg-slate-800/60 rounded-2xl border border-slate-700/60 p-4 space-y-2 text-2xs text-slate-400">
+        <span class="font-bold uppercase tracking-wider text-slate-300 block">Classroom Coaching Reminders</span>
+        <ul class="space-y-1.5 list-disc list-inside">
+          <li><strong>Never rush to apologize:</strong> Separate understanding from admitting premature fault.</li>
+          <li><strong>Never concede price for free:</strong> Always trade for volume, scope, or milestone flexibility.</li>
+          <li><strong>Validate before proposing:</strong> Confirm the client's constraint before suggesting dates.</li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- Right Interactive Chat Window -->
+    <section class="lg:col-span-8 flex flex-col bg-slate-800 rounded-2xl border border-slate-700/80 shadow-2xl overflow-hidden min-h-[580px] h-[calc(100vh-140px)]">
+      
+      <!-- Dialogue Stage Banner -->
+      <div class="bg-slate-800/90 border-b border-slate-700 px-5 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-xs font-bold text-slate-200" id="dialogueTrackLabel">Active Session: Overseas Sales Track</span>
+        </div>
+        <div class="flex items-center gap-3 text-2xs font-mono text-slate-400">
+          <span>Turns: <span id="turnCounter" class="text-white font-bold">0</span></span>
+          <span>•</span>
+          <button onclick="clearChatLog()" class="hover:text-slate-200 transition">Clear Log</button>
+        </div>
+      </div>
+
+      <!-- Chat Log Stream -->
+      <div id="chatMessages" class="flex-1 p-4 sm:p-6 overflow-y-auto custom-scroll space-y-4">
+        <!-- Messages dynamically appended here -->
+      </div>
+
+      <!-- Live Speech Recognition / Interim Bubble -->
+      <div id="liveTranscriptBox" class="hidden px-5 py-2.5 bg-blue-950/40 border-t border-blue-900/60 flex items-center gap-3 text-xs text-blue-200">
+        <span class="w-2 h-2 rounded-full bg-blue-400 animate-ping shrink-0"></span>
+        <span class="font-mono text-2xs uppercase text-blue-400 shrink-0">Listening:</span>
+        <span id="liveTranscriptText" class="italic truncate flex-1 text-slate-200">...</span>
+      </div>
+
+      <!-- Bottom Voice & Text Input Console -->
+      <div class="p-3 sm:p-4 bg-slate-900/90 border-t border-slate-700/80 space-y-3">
+        
+        <!-- Primary Action Row -->
+        <div class="flex items-center gap-2 sm:gap-3">
+          
+          <!-- Big Speech Mic Button -->
+          <button 
+            id="micBtn" 
+            onclick="toggleSpeechRecognition()" 
+            class="relative flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-hyosung-600 hover:from-blue-500 hover:to-hyosung-500 active:scale-95 text-white font-bold px-4 sm:px-6 py-3 rounded-xl shadow-lg transition-all shrink-0 cursor-pointer"
+            title="Click and speak your response"
+          >
+            <span id="micIcon" class="text-base sm:text-lg">🎙️</span>
+            <span id="micLabel" class="text-xs sm:text-sm tracking-wide hidden sm:inline">Push to Speak</span>
+          </button>
+
+          <!-- Fallback Text Input Field -->
+          <div class="flex-1 relative">
+            <input 
+              type="text" 
+              id="textInput" 
+              placeholder="Or type your business response and hit Enter..." 
+              onkeydown="handleInputKeydown(event)"
+              class="w-full bg-slate-800 border border-slate-700 focus:border-blue-500 rounded-xl px-4 py-3 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
+            />
+          </div>
+
+          <!-- Send Text Button -->
+          <button 
+            id="sendBtn" 
+            onclick="submitUserMessage()" 
+            class="bg-slate-700 hover:bg-slate-600 active:scale-95 text-slate-200 hover:text-white p-3 rounded-xl border border-slate-600 transition shrink-0"
+            title="Send Message"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+          </button>
+        </div>
+
+        <!-- Subtext Tips -->
+        <div class="flex flex-wrap items-center justify-between text-2xs text-slate-400 px-1 gap-2">
+          <div class="flex items-center gap-1.5">
+            <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            <span>Microphone powered by Web Speech API (Chrome / Edge recommended)</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span>Tip: Speak naturally in full professional sentences</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- API Settings & Key Configuration Modal -->
+  <div id="settingsModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 fade-in">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between pb-3 border-b border-slate-700">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 flex items-center justify-center font-bold text-sm">
+            ⚙️
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white">Simulator API Settings</h3>
+            <p class="text-2xs text-slate-400">Configure your LLM model provider and credentials</p>
+          </div>
+        </div>
+        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white text-lg px-2">✕</button>
+      </div>
+
+      <!-- Provider Radio Selector -->
+      <div class="space-y-2">
+        <label class="block text-2xs font-bold uppercase tracking-wider text-slate-300">Model Provider</label>
+        <div class="grid grid-cols-3 gap-2">
+          <button onclick="selectProvider('gemini')" id="provider-gemini" class="provider-btn py-2 px-3 rounded-xl border text-xs font-semibold text-center transition">
+            Gemini
+          </button>
+          <button onclick="selectProvider('openai')" id="provider-openai" class="provider-btn py-2 px-3 rounded-xl border text-xs font-semibold text-center transition">
+            OpenAI
+          </button>
+          <button onclick="selectProvider('anthropic')" id="provider-anthropic" class="provider-btn py-2 px-3 rounded-xl border text-xs font-semibold text-center transition">
+            Anthropic
+          </button>
+        </div>
+      </div>
+
+      <!-- API Key Input Field (Explicit Enter / Save Button) -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <label for="apiKeyInput" class="block text-2xs font-bold uppercase tracking-wider text-slate-300" id="apiKeyLabel">
+            API Key
+          </label>
+          <span class="text-2xs text-slate-400" id="apiKeyHelper">Stored securely in your local browser only</span>
+        </div>
+
+        <div class="relative">
+          <input 
+            type="password" 
+            id="apiKeyInput" 
+            placeholder="Paste your API key here (sk-..., AIza...)" 
+            class="w-full bg-slate-900 border border-slate-600 focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-xs font-mono text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+            onkeydown="if(event.key==='Enter') saveApiKey()"
+          />
+          <button 
+            type="button" 
+            onclick="togglePasswordVisibility()" 
+            class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-200 text-xs"
+            title="Toggle visibility"
+          >
+            👁️
+          </button>
+        </div>
+      </div>
+
+      <!-- Model Spec & System Temperature -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-2xs font-bold uppercase tracking-wider text-slate-300 mb-1">Model Name</label>
+          <input 
+            type="text" 
+            id="customModelInput" 
+            class="w-full bg-slate-900 border border-slate-600 rounded-xl px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none" 
+            placeholder="gemini-3-flash-preview"
+          />
+        </div>
+        <div>
+          <label class="block text-2xs font-bold uppercase tracking-wider text-slate-300 mb-1">Temperature</label>
+          <select id="temperatureSelect" class="w-full bg-slate-900 border border-slate-600 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none">
+            <option value="0.5">0.5 (Predictable / Strict)</option>
+            <option value="0.7" selected>0.7 (Realistic B2B Client)</option>
+            <option value="0.9">0.9 (Challenging / Volatile)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Status & Feedback Area -->
+      <div id="saveFeedback" class="hidden p-3 rounded-xl text-2xs leading-relaxed"></div>
+
+      <!-- Action Buttons (Guaranteed Explicit Save Button) -->
+      <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-700">
+        <button onclick="clearSavedKey()" class="px-3.5 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 transition">
+          Remove Key
+        </button>
+        <button onclick="closeSettingsModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-700 transition">
+          Cancel
+        </button>
+        <button onclick="saveApiKey()" class="bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold text-xs px-5 py-2 rounded-xl shadow-md transition">
+          Save Settings & Key
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-5 right-5 bg-slate-800 text-white border border-slate-700 text-xs px-4 py-2.5 rounded-xl shadow-2xl hidden transition-all duration-200 z-50 flex items-center gap-2">
+    <span id="toastIcon">✓</span>
+    <span id="toastMsg">Notification message</span>
+  </div>
+
+  <script>
+    // -------------------------------------------------------------
+    // 1. STATE & STORAGE MANAGEMENT
+    // -------------------------------------------------------------
+    const APP_CONFIG = {
+      provider: localStorage.getItem('sim_provider') || 'gemini',
+      apiKey: localStorage.getItem('sim_api_key') || '',
+      model: localStorage.getItem('sim_model') || 'gemini-3-flash-preview',
+      temperature: parseFloat(localStorage.getItem('sim_temperature') || '0.7'),
+      ttsEnabled: localStorage.getItem('sim_tts_enabled') !== 'false',
+    };
+
+    let chatHistory = [];
+    let recognition = null;
+    let isListening = false;
+    let currentScenarioId = 1;
+    let currentJobTrack = 'overseas';
+    let isAwaitingResponse = false;
+
+    // 12-Unit Curriculum Scenarios Database
+    const SCENARIOS = [
+      {
+        id: 1,
+        title: "Unit 1: Opening & Needs Discovery",
+        unitName: "Unit 1: Needs Discovery",
+        persona: "Procurement Director, European EPC & Utility Consortium",
+        difficulty: "Vague & Hesitant",
+        desc: "Says 'We just need to improve efficiency and modernize our vendor supply chain for next fiscal year,' but gives evasive, high-level non-answers when pressed.",
+        objective: "Follow Stage 1 (Broad) → Stage 2 (Diagnostic) → Stage 3 (Echo & Reframe). Do not jump straight to presenting Hyosung product catalogs.",
+        initialGreeting: "Hello. Thanks for taking the call today. As you know, our board asked us to look into supplier options for next fiscal year. Honestly, we just need to improve overall efficiency across our delivery footprint. What can Hyosung do for us?",
+        systemPrompt: "You are Marcus Vance, a Senior Procurement Director at a major European utility and EPC holding consortium. You are speaking with a Hyosung representative in an initial sales kickoff. You are cautious, slightly guarded, and speak in broad corporate buzzwords ('we need higher efficiency', 'modernizing lines', 'reducing friction'). If the representative asks generic or rapid catalog-pitch questions, remain evasive. However, if the representative uses structured diagnostic questions (e.g. asking whether efficiency means line scrap, delivery lead time, or maintenance cycles) or reframes your priorities empathetically, gradually open up and reveal that your real headache is frequent factory acceptance test (FAT) delays and unpredictable shipping schedules."
+      },
+      {
+        id: 2,
+        title: "Unit 2: Presenting Proposal & ROI",
+        unitName: "Unit 2: Proposal Pitching",
+        persona: "Chief Operating Officer, International Apparel Mill",
+        difficulty: "Sticker Shock Resistance",
+        desc: "Listens to your technical proposal but immediately balks at upfront cost: 'Your quote is 15% higher than what we currently pay our Turkish vendor.'",
+        objective: "Structure your response via Situation → Implication → Recommendation. Reframe initial price to total lifecycle yield and scrap reduction.",
+        initialGreeting: "I've reviewed the preliminary numbers your team sent over for the recycled spandex filaments. The technical specs look fine, but I have to be blunt: your quote is roughly 15% higher than what we currently pay our existing supplier. Why should I sign off on this?",
+        systemPrompt: "You are Elena Rostova, COO of a high-volume performance apparel mill. You are evaluating a proposal from Hyosung. You are very sharp about unit costs and immediately push back on price. If the salesperson apologizes or drops their price immediately, become skeptical of their quality. If they acknowledge your constraint and reframe the conversation around downstream implications (scrap rate, dyeing consistency, fabric rejection costs), become engaged and open to reviewing a pilot batch trial."
+      },
+      {
+        id: 3,
+        title: "Unit 3: Negotiating Price & Terms",
+        unitName: "Unit 3: Commercial Negotiation",
+        persona: "Head of Global Sourcing, Heavy Power Equipment",
+        difficulty: "Aggressive Bargainer",
+        desc: "Demands a flat 10% discount due to currency fluctuations and threatens to walk away to competitor bids by 5 PM.",
+        objective: "Deploy Acknowledge → Anchor → Alternative. Never give a concession without securing reciprocal trade-offs in order volume or payment terms.",
+        initialGreeting: "Look, with current exchange rates, your quote puts us over budget. I have another quote on my desk that is significantly lower. I need a flat 10% discount across the board, or my committee is going to recommend walking away from this contract today.",
+        systemPrompt: "You are David Thorne, Head of Sourcing. You are demanding a 10% discount on power equipment. If the salesperson caves in and grants a discount with no trade-off, continue squeezing them for faster delivery terms. If the salesperson stands firm, anchors the value of the technical warranties, and offers a reciprocal counter-proposal (e.g. 'I can adjust price if your team commits to an annual contract or shortens payment milestones'), respect their professional composure and negotiate on that variable."
+      },
+      {
+        id: 4,
+        title: "Unit 4: Delivery Delay Notification",
+        unitName: "Unit 4: Proactive Delay Notice",
+        persona: "Project Director, Offshore Substation Construction",
+        difficulty: "High Pressure & Skeptical",
+        desc: "Reacts with intense alarm when notified of delivery delays: 'If those transformers miss the barge window, it will cost us hundreds of thousands in liquidated damages!'",
+        objective: "Deliver bad news using Proactive Notify → Action in Progress → Committed Deadline. Offer active mitigation solutions without getting defensive.",
+        initialGreeting: "Hi there. I saw your meeting request. We're on a very tight schedule with the port authorities this month—tell me you have good news regarding the transformer shipment date?",
+        systemPrompt: "You are Klaus Weber, a rigid Project Director on a multi-million-dollar offshore substation installation. Any delay threatens heavy penalties. When the Hyosung rep informs you of a delay, react with sharp concern and ask what is being done. If they give vague promises ('we'll do our best'), press them aggressively. If they provide verified facts, active countermeasures (overtime shifts, alternative cargo routing), and a firm committed time to provide final tracking, acknowledge their proactive transparency."
+      },
+      {
+        id: 5,
+        title: "Unit 5: Confirming & Adjusting Dates",
+        unitName: "Unit 5: Timeline Coordination",
+        persona: "Logistics Manager, Regional Grid Authority",
+        difficulty: "Unreasonable Timeline Demand",
+        desc: "Requests moving up an overseas shipment by two full weeks with zero exceptions.",
+        objective: "Confirm timeline, flag capacity/quality constraints without excuses, and propose realistic alternatives or partial shipments.",
+        initialGreeting: "We just had our site schedule revised by state regulators. We need all remaining switchgear delivered two weeks earlier than our contract date. Can you commit to Friday the 15th?",
+        systemPrompt: "You are Sarah Chen, Logistics Manager. You are demanding delivery two weeks early. If the salesperson just says 'No impossible', push back angrily. If the salesperson confirms your requested date, calmly explains the constraint (e.g. factory QA testing cannot be rushed without safety risks), and proposes a viable alternative (e.g. partial dispatch of Unit 1 first), work with them on that solution."
+      },
+      {
+        id: 6,
+        title: "Unit 6: Client Complaints & Claims",
+        unitName: "Unit 6: Claim Resolution",
+        persona: "Plant Operations Chief, Industrial Weaving Plant",
+        difficulty: "Furious & Impatient",
+        desc: "Calls to complain that the latest container lot of yarn experienced high breakage rates on circular knitting machines.",
+        objective: "Separate apology from solution (Apologize → Investigate → Resolve). Avoid premature promises before inspecting technical logs.",
+        initialGreeting: "This is unacceptable! We loaded your yarn onto our circular knitting machines this morning and the line snapped three times in two hours. My mill manager is furious. Are you going to cover our plant downtime or what?!",
+        systemPrompt: "You are an angry factory operations chief whose manufacturing line was shut down by defective materials. You want an immediate refund. If the salesperson gets defensive or blames your operators, escalate. If the salesperson apologizes sincerely for the disruption, does not make wild premature promises, and asks diagnostic questions to investigate lot batch numbers and telemetry before issuing a rapid action plan, calm down and cooperate."
+      },
+      {
+        id: 7,
+        title: "Unit 7: Short-Notice Urgent Issues",
+        unitName: "Unit 7: Live Incident Management",
+        persona: "Commercial Director, Global Automotive Tier-1",
+        difficulty: "Panic & Urgency",
+        desc: "Urgent crisis call: an unexpected harbor strike has blocked container unloading at the regional port.",
+        objective: "Stabilize panic, state verified facts vs unknown details transparently, and establish an interim action plan within 30 minutes.",
+        initialGreeting: "Did you see the news about the port strike in Rotterdam?! Our assembly plant runs on just-in-time inventory. Are our containers trapped? What is Hyosung doing about this right now?!",
+        systemPrompt: "You are panicked about supply disruption shutting down your plant. If the salesperson panics or goes silent, your anxiety skyrockets. If they respond with calm authority (Stabilize), share what is verified vs what is being validated (Diagnose), and offer an interim contingency plan, express relief and accept their check-in checkpoint."
+      },
+      {
+        id: 8,
+        title: "Unit 8: Cross-Team Internal Pressure",
+        unitName: "Unit 8: Internal Coordination",
+        persona: "Internal Manufacturing Plant Manager, Changwon Works",
+        difficulty: "Overwhelmed & Defensive",
+        desc: "Internal colleague is stressed with multiple orders: 'Why does Overseas Sales always bring us impossible rush orders at the last minute?'",
+        objective: "Communicate Context → Urgency Without Blame → Specific Actionable Ask. Coordinate without triggering defensive resistance.",
+        initialGreeting: "Look, our engineering bays are running at 110% capacity right now. My team is working overtime every weekend. Why is sales dumping another urgent customer spec change on my desk today?",
+        systemPrompt: "You are Min-soo Park, a stressed Manufacturing Plant Manager at Hyosung. You feel sales makes promises to clients without understanding factory realities. If the salesperson pulls rank or blames you, refuse to budge. If the salesperson provides clear context, removes personal blame, and asks specifically for one concrete deliverable by end of day, be willing to help."
+      },
+      {
+        id: 9,
+        title: "Unit 9: Relationship Follow-up",
+        unitName: "Unit 9: Reconnecting Dormant Accounts",
+        persona: "Procurement Director, Former Client (6 Months Quiet)",
+        difficulty: "Busy & Guards Up",
+        desc: "Has not spoken with Hyosung in half a year. Skeptical of generic vendor check-ins.",
+        objective: "Reference specific past details, offer unsolicited industry value, and make a low-pressure ask to stay in sync.",
+        initialGreeting: "Hello? Oh, Hyosung... It's been quite a while. I have a meeting in five minutes, so what is this call regarding?",
+        systemPrompt: "You are a busy buyer who hates boilerplate sales check-ins ('Just calling to see if you have any orders'). If the salesperson gives generic pitches, brush them off politely. If they reference a specific project or challenge you discussed last spring and share a relevant market update with zero pressure, warm up and agree to a short catch-up call next month."
+      },
+      {
+        id: 10,
+        title: "Unit 10: Difficult Stakeholder Alignment",
+        unitName: "Unit 10: Conflict Resolution",
+        persona: "Regional Managing Director, Joint Venture Partner",
+        difficulty: "Philosophical Disagreement",
+        desc: "Disagrees strongly on marketing and distribution strategy for the North American market.",
+        objective: "Name the tension directly, reframe around shared overarching goals, and propose a low-risk trial timeline.",
+        initialGreeting: "I have to be honest with you: I strongly disagree with the distribution strategy your committee proposed. Trying to sell directly to utilities will burn bridges with our local agent network.",
+        systemPrompt: "You are a seasoned regional partner who feels your local expertise is being ignored. If the representative argues defensively, become stubborn. If the representative directly acknowledges the tension ('I think we're seeing the risk differently'), reframes to your shared goal of maximizing regional market share, and proposes a 2-week pilot reassessment, show collaborative respect."
+      },
+      {
+        id: 11,
+        title: "Unit 11: Renegotiating Stalled Deals",
+        unitName: "Unit 11: Deadlock Reopening",
+        persona: "Chief Purchasing Officer, Major EPC Consortium",
+        difficulty: "Cold Inaction (Stalled 2 Months)",
+        desc: "Deal has been dead in the water for two months over payment warranty disputes.",
+        objective: "Reopen neutrally without rehashing past blame, introduce a new variable (phased delivery or altered scope), and present a revised structure.",
+        initialGreeting: "Hello. Honestly, I thought this deal was dead after our disagreement back in August. What has changed on your end that warrants reopening this conversation?",
+        systemPrompt: "You walked away from negotiations two months ago because Hyosung would not budge on terms. If the representative asks 'Any update on your side?', act cold. If the representative brings fresh eyes, explicitly introduces a new deal variable (e.g. phased milestone billing or altered equipment scope) and asks if you are open to revisiting a revised structure, express curiosity and agree to look at the new numbers."
+      },
+      {
+        id: 12,
+        title: "Unit 12: Comprehensive Capstone Simulation",
+        unitName: "Unit 12: End-to-End Simulation",
+        persona: "Executive Vice President, Global Infrastructure & Industrial Materials",
+        difficulty: "Adaptive & Multi-Turn",
+        desc: "Shifts rapidly across multiple stages: starts with vague needs, probes pricing, challenges lead times, and tests composure.",
+        objective: "Seamlessly transition across all 11 frameworks in real time under dynamic pressure.",
+        initialGreeting: "Welcome to our headquarters. We are considering consolidating our global industrial fiber and electrical equipment suppliers into a single master partner. We have strict standards and little patience for vendor excuses. Convince me why Hyosung should even be on our shortlist.",
+        systemPrompt: "You are an executive testing the Hyosung representative across multiple business dimensions. Start by expressing broad, vague expectations. Once they diagnose your needs, immediately challenge their pricing. If they handle pricing, throw in a logistics constraint. Evaluate their ability to pivot smoothly across discovery, reframing, objection handling, and professional composure."
+      }
+    ];
+
+    // -------------------------------------------------------------
+    // 2. INITIALIZATION & SETUP
+    // -------------------------------------------------------------
+    window.addEventListener('DOMContentLoaded', () => {
+      populateScenarioDropdown();
+      applySavedSettingsUI();
+      loadSelectedScenario();
+      initSpeechRecognition();
+    });
+
+    function populateScenarioDropdown() {
+      const select = document.getElementById('scenarioSelect');
+      select.innerHTML = SCENARIOS.map(s => `
+        <option value="${s.id}">Unit ${s.id}: ${s.unitName.split(': ')[1]}</option>
+      `).join('');
     }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    function applySavedSettingsUI() {
+      selectProvider(APP_CONFIG.provider, false);
+      document.getElementById('apiKeyInput').value = APP_CONFIG.apiKey;
+      document.getElementById('customModelInput').value = APP_CONFIG.model;
+      document.getElementById('temperatureSelect').value = APP_CONFIG.temperature;
+      updateApiStatusBadge();
+      updateTTSUI();
+    }
+
+    function updateApiStatusBadge() {
+      const badge = document.getElementById('apiStatusBadge');
+      const text = document.getElementById('apiStatusText');
+      if (APP_CONFIG.apiKey && APP_CONFIG.apiKey.trim().length > 0) {
+        badge.className = "cursor-pointer flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-medium border bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 transition";
+        badge.querySelector('span:first-child').className = "w-2 h-2 rounded-full bg-emerald-400";
+        text.textContent = `${APP_CONFIG.provider.toUpperCase()} Ready`;
+      } else {
+        badge.className = "cursor-pointer flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-medium border bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20 transition";
+        badge.querySelector('span:first-child').className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
+        text.textContent = "Key Setup Needed";
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 3. SCENARIO & CHAT FLOW ENGINE
+    // -------------------------------------------------------------
+    function loadSelectedScenario() {
+      const select = document.getElementById('scenarioSelect');
+      currentScenarioId = parseInt(select.value, 10);
+      const sc = SCENARIOS.find(s => s.id === currentScenarioId) || SCENARIOS[0];
+
+      document.getElementById('personaTitle').textContent = sc.persona;
+      document.getElementById('personaDifficulty').textContent = sc.difficulty;
+      document.getElementById('personaDesc').textContent = `"${sc.desc}"`;
+      document.getElementById('scenarioObjective').textContent = sc.objective;
+      document.getElementById('dialogueTrackLabel').textContent = `${sc.unitName} • ${currentJobTrack.toUpperCase()} Track`;
+
+      restartSimulation();
+    }
+
+    function setJobTrack(track) {
+      currentJobTrack = track;
+      ['overseas', 'domestic', 'technical'].forEach(t => {
+        const btn = document.getElementById(`track-${t}`);
+        if (t === track) {
+          btn.className = "track-btn py-1.5 px-2 text-2xs font-bold rounded-lg bg-blue-600 text-white transition truncate shadow";
+        } else {
+          btn.className = "track-btn py-1.5 px-2 text-2xs font-bold rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 transition truncate";
+        }
+      });
+      loadSelectedScenario();
+    }
+
+    function restartSimulation() {
+      const sc = SCENARIOS.find(s => s.id === currentScenarioId) || SCENARIOS[0];
+      chatHistory = [];
+      document.getElementById('chatMessages').innerHTML = '';
+      document.getElementById('turnCounter').textContent = '0';
+
+      // System greeting
+      appendMessage('client', sc.initialGreeting, sc.persona);
+      if (APP_CONFIG.ttsEnabled) {
+        speakText(sc.initialGreeting);
+      }
+    }
+
+    function clearChatLog() {
+      document.getElementById('chatMessages').innerHTML = '';
+      document.getElementById('turnCounter').textContent = '0';
+      restartSimulation();
+      showToast('Chat history cleared', '✓');
+    }
+
+    function appendMessage(sender, text, authorName) {
+      const container = document.getElementById('chatMessages');
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `flex flex-col ${sender === 'user' ? 'items-end' : 'items-start'} space-y-1 fade-in`;
+
+      const isUser = sender === 'user';
+      const bubbleBg = isUser 
+        ? 'bg-blue-600 text-white border border-blue-500/50 rounded-2xl rounded-tr-none' 
+        : 'bg-slate-700/80 text-slate-100 border border-slate-600/70 rounded-2xl rounded-tl-none';
+
+      msgDiv.innerHTML = `
+        <div class="flex items-center gap-2 text-2xs text-slate-400 px-1 font-semibold">
+          <span>${authorName || (isUser ? 'Hyosung Representative (You)' : 'Client')}</span>
+          <span>•</span>
+          <span class="text-2xs font-normal">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+        <div class="max-w-[85%] sm:max-w-[75%] p-3.5 sm:p-4 text-xs sm:text-sm leading-relaxed ${bubbleBg} shadow-md select-text">
+          ${escapeHtml(text)}
+        </div>
+      `;
+
+      container.appendChild(msgDiv);
+      container.scrollTop = container.scrollHeight;
+
+      // Update turn counter
+      const totalTurns = Math.floor(chatHistory.filter(m => m.role === 'user').length);
+      document.getElementById('turnCounter').textContent = totalTurns;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    // -------------------------------------------------------------
+    // 4. USER SUBMISSION & AI DISPATCH
+    // -------------------------------------------------------------
+    async function submitUserMessage() {
+      const input = document.getElementById('textInput');
+      const text = input.value.trim();
+      if (!text || isAwaitingResponse) return;
+
+      input.value = '';
+      await processUserTurn(text);
+    }
+
+    function handleInputKeydown(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        submitUserMessage();
+      }
+    }
+
+    async function processUserTurn(userUtterance) {
+      isAwaitingResponse = true;
+      appendMessage('user', userUtterance, `Hyosung (${currentJobTrack.toUpperCase()})`);
+      chatHistory.push({ role: 'user', content: userUtterance });
+
+      // Typing Indicator
+      const typingIndicator = showTypingIndicator();
+
+      try {
+        const sc = SCENARIOS.find(s => s.id === currentScenarioId) || SCENARIOS[0];
+        const aiReply = await requestLLMResponse(sc, userUtterance);
+        
+        removeTypingIndicator(typingIndicator);
+        appendMessage('client', aiReply, sc.persona);
+        chatHistory.push({ role: 'assistant', content: aiReply });
+
+        if (APP_CONFIG.ttsEnabled) {
+          speakText(aiReply);
+        }
+      } catch (err) {
+        removeTypingIndicator(typingIndicator);
+        console.error('LLM Simulation Error:', err);
+        showApiErrorMessage(err.message || 'Failed to connect to AI backend.');
+      } finally {
+        isAwaitingResponse = false;
+      }
+    }
+
+    function showTypingIndicator() {
+      const container = document.getElementById('chatMessages');
+      const indicator = document.createElement('div');
+      indicator.id = 'aiTypingIndicator';
+      indicator.className = 'flex items-center gap-2 text-2xs text-slate-400 p-2 fade-in';
+      indicator.innerHTML = `
+        <span class="w-2 h-2 rounded-full bg-blue-400 animate-bounce"></span>
+        <span class="w-2 h-2 rounded-full bg-blue-400 animate-bounce [animation-delay:0.2s]"></span>
+        <span class="w-2 h-2 rounded-full bg-blue-400 animate-bounce [animation-delay:0.4s]"></span>
+        <span class="italic text-slate-400 ml-1">Client is responding...</span>
+      `;
+      container.appendChild(indicator);
+      container.scrollTop = container.scrollHeight;
+      return indicator;
+    }
+
+    function removeTypingIndicator(el) {
+      if (el && el.parentNode) {
+        el.parentNode.removeChild(el);
+      }
+    }
+
+    function showApiErrorMessage(errDetail) {
+      const container = document.getElementById('chatMessages');
+      const errBox = document.createElement('div');
+      errBox.className = 'p-3 rounded-xl bg-rose-950/60 border border-rose-700/80 text-rose-200 text-xs space-y-2 fade-in';
+      errBox.innerHTML = `
+        <div class="flex items-center gap-1.5 font-bold text-rose-400">
+          <span>⚠️ Connection Issue:</span>
+          <span>No response received from LLM</span>
+        </div>
+        <p class="text-2xs text-rose-300 font-mono">${escapeHtml(errDetail)}</p>
+        <div class="flex items-center gap-2 pt-1 text-2xs">
+          <button onclick="openSettingsModal()" class="bg-rose-800 hover:bg-rose-700 text-white px-2.5 py-1 rounded font-semibold transition">
+            Check API Key in Settings
+          </button>
+        </div>
+      `;
+      container.appendChild(errBox);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // -------------------------------------------------------------
+    // 5. LLM API REQUEST HANDLER (GEMINI / OPENAI / ANTHROPIC)
+    // -------------------------------------------------------------
+    async function requestLLMResponse(scenario, userText) {
+      const apiKey = APP_CONFIG.apiKey ? APP_CONFIG.apiKey.trim() : "";
+      const provider = APP_CONFIG.provider;
+      const model = APP_CONFIG.model;
+
+      // Construct system prompt including persona and job track constraint
+      const systemInstructionText = `
+        ${scenario.systemPrompt}
+        Current Learner Department: ${currentJobTrack.toUpperCase()} at Hyosung Group.
+        Guidelines:
+        1. Keep responses concise, realistic, and conversational (2 to 4 sentences maximum).
+        2. Speak in authentic B2B client English.
+        3. Challenge the learner realistically based on their input. If their answer is vague or defensive, press harder. If they use structured diagnostic questions or value reframing, show measured collaboration.
+        4. Do NOT output meta text or instructor evaluation—stay in character 100% of the time as the client.
+      `.trim();
+
+      // Dispatch to chosen provider
+      if (provider === 'gemini') {
+        return await callGeminiAPI(apiKey, model, systemInstructionText);
+      } else if (provider === 'openai') {
+        return await callOpenAIAPI(apiKey, model, systemInstructionText);
+      } else if (provider === 'anthropic') {
+        return await callAnthropicAPI(apiKey, model, systemInstructionText);
+      } else {
+        throw new Error('Unknown AI provider selected.');
+      }
+    }
+
+    // Gemini API Direct Engine
+    async function callGeminiAPI(apiKey, modelName, systemPrompt) {
+      const targetModel = modelName || 'gemini-3-flash-preview';
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
+
+      // Build turn contents formatted for Gemini
+      const contents = [];
+      chatHistory.forEach(turn => {
+        contents.push({
+          role: turn.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: turn.content }]
+        });
+      });
+
+      const payload = {
+        contents: contents,
+        systemInstruction: {
+          parts: [{ text: systemPrompt }]
+        },
+        generationConfig: {
+          temperature: APP_CONFIG.temperature,
+          maxOutputTokens: 250,
+        }
+      };
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `HTTP ${res.status}: Gemini request failed.`);
+      }
+
+      const data = await res.json();
+      const candidate = data.candidates?.[0];
+      const reply = candidate?.content?.parts?.[0]?.text;
+      if (!reply) throw new Error('Gemini returned an empty candidate.');
+      return reply.trim();
+    }
+
+    // OpenAI Engine
+    async function callOpenAIAPI(apiKey, modelName, systemPrompt) {
+      if (!apiKey) throw new Error('OpenAI API Key is missing. Please set your key in Settings.');
+      const targetModel = modelName || 'gpt-4o-mini';
+      const url = 'https://api.openai.com/v1/chat/completions';
+
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        ...chatHistory.map(turn => ({
+          role: turn.role === 'assistant' ? 'assistant' : 'user',
+          content: turn.content
+        }))
+      ];
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: targetModel,
+          messages: messages,
+          temperature: APP_CONFIG.temperature,
+          max_tokens: 250
+        })
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error?.message || `OpenAI returned status ${res.status}`);
+      }
+
+      const data = await res.json();
+      const reply = data.choices?.[0]?.message?.content;
+      if (!reply) throw new Error('OpenAI returned no text response.');
+      return reply.trim();
+    }
+
+    // Anthropic Claude Engine
+    async function callAnthropicAPI(apiKey, modelName, systemPrompt) {
+      if (!apiKey) throw new Error('Anthropic API Key is missing. Please set your key in Settings.');
+      const targetModel = modelName || 'claude-3-5-sonnet-latest';
+      const url = 'https://api.anthropic.com/v1/messages';
+
+      const messages = chatHistory.map(turn => ({
+        role: turn.role === 'assistant' ? 'assistant' : 'user',
+        content: turn.content
+      }));
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: targetModel,
+          system: systemPrompt,
+          messages: messages,
+          temperature: APP_CONFIG.temperature,
+          max_tokens: 250
+        })
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error?.message || `Anthropic returned status ${res.status}`);
+      }
+
+      const data = await res.json();
+      const reply = data.content?.[0]?.text;
+      if (!reply) throw new Error('Anthropic returned no text response.');
+      return reply.trim();
+    }
+
+    // -------------------------------------------------------------
+    // 6. SPEECH RECOGNITION (STT) & SYNTHESIS (TTS)
+    // -------------------------------------------------------------
+    function initSpeechRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        console.warn('SpeechRecognition API is not available on this browser.');
+        document.getElementById('micLabel').textContent = 'Voice Unsupported';
+        document.getElementById('micBtn').classList.add('opacity-50');
+        return;
+      }
+
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        isListening = true;
+        updateMicUI(true);
+        document.getElementById('liveTranscriptBox').classList.remove('hidden');
+        document.getElementById('liveTranscriptText').textContent = 'Listening for speech...';
+      };
+
+      recognition.onresult = (event) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const piece = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += piece;
+          } else {
+            interimTranscript += piece;
+          }
+        }
+
+        document.getElementById('liveTranscriptText').textContent = finalTranscript || interimTranscript || 'Listening...';
+
+        if (finalTranscript.trim().length > 0) {
+          recognition.stop();
+          processUserTurn(finalTranscript.trim());
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.warn('Speech recognition status/error:', event.error);
+        isListening = false;
+        updateMicUI(false);
+        document.getElementById('liveTranscriptBox').classList.add('hidden');
+        if (event.error === 'not-allowed') {
+          showToast('Microphone access blocked in browser', '⚠️');
+        }
+      };
+
+      recognition.onend = () => {
+        isListening = false;
+        updateMicUI(false);
+        document.getElementById('liveTranscriptBox').classList.add('hidden');
+      };
+    }
+
+    function toggleSpeechRecognition() {
+      if (!recognition) {
+        showToast('Speech recognition requires Chrome or Edge', 'ℹ️');
+        return;
+      }
+
+      if (isListening) {
+        recognition.stop();
+      } else {
+        try {
+          recognition.start();
+        } catch (e) {
+          console.error(e);
+          recognition.stop();
+        }
+      }
+    }
+
+    function updateMicUI(listening) {
+      const btn = document.getElementById('micBtn');
+      const icon = document.getElementById('micIcon');
+      const label = document.getElementById('micLabel');
+
+      if (listening) {
+        btn.className = "relative flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-bold px-4 sm:px-6 py-3 rounded-xl shadow-lg transition-all shrink-0 cursor-pointer pulse-ring";
+        icon.textContent = "🛑";
+        label.textContent = "Listening...";
+      } else {
+        btn.className = "relative flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-hyosung-600 hover:from-blue-500 hover:to-hyosung-500 active:scale-95 text-white font-bold px-4 sm:px-6 py-3 rounded-xl shadow-lg transition-all shrink-0 cursor-pointer";
+        icon.textContent = "🎙️";
+        label.textContent = "Push to Speak";
+      }
+    }
+
+    function toggleTTS() {
+      APP_CONFIG.ttsEnabled = !APP_CONFIG.ttsEnabled;
+      localStorage.setItem('sim_tts_enabled', APP_CONFIG.ttsEnabled);
+      updateTTSUI();
+      if (!APP_CONFIG.ttsEnabled && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      showToast(`AI Voice Readout: ${APP_CONFIG.ttsEnabled ? 'Enabled' : 'Disabled'}`);
+    }
+
+    function updateTTSUI() {
+      const icon = document.getElementById('ttsIcon');
+      const text = document.getElementById('ttsText');
+      if (APP_CONFIG.ttsEnabled) {
+        icon.textContent = '🔊';
+        text.textContent = 'Voice: ON';
+      } else {
+        icon.textContent = '🔇';
+        text.textContent = 'Voice: OFF';
+      }
+    }
+
+    function speakText(text) {
+      if (!window.speechSynthesis) return;
+      window.speechSynthesis.cancel(); // Stop any pending speech
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US';
+      utterance.rate = 1.0;
+      utterance.pitch = 0.95; // Slightly authoritative business tone
+
+      const voices = window.speechSynthesis.getVoices();
+      const englishVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Premium')));
+      if (englishVoice) {
+        utterance.voice = englishVoice;
+      }
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    // -------------------------------------------------------------
+    // 7. SETTINGS MODAL & GUARANTEED SAVE ENGINE
+    // -------------------------------------------------------------
+    function openSettingsModal() {
+      document.getElementById('settingsModal').classList.remove('hidden');
+      document.getElementById('apiKeyInput').focus();
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('settingsModal').classList.add('hidden');
+      const fb = document.getElementById('saveFeedback');
+      fb.className = 'hidden';
+      fb.innerHTML = '';
+    }
+
+    function selectProvider(prov, triggerUIChange = true) {
+      APP_CONFIG.provider = prov;
+      ['gemini', 'openai', 'anthropic'].forEach(p => {
+        const btn = document.getElementById(`provider-${p}`);
+        if (p === prov) {
+          btn.className = "provider-btn py-2 px-3 rounded-xl border border-blue-500 bg-blue-600/20 text-blue-300 font-bold text-xs text-center transition";
+        } else {
+          btn.className = "provider-btn py-2 px-3 rounded-xl border border-slate-700 bg-slate-800 text-slate-400 font-medium text-xs text-center hover:bg-slate-700 transition";
+        }
+      });
+
+      const keyInput = document.getElementById('apiKeyInput');
+      const modelInput = document.getElementById('customModelInput');
+
+      if (prov === 'gemini') {
+        keyInput.placeholder = "Paste Gemini Key (AIza...) or leave empty for Canvas runtime";
+        if (triggerUIChange) modelInput.value = 'gemini-3-flash-preview';
+      } else if (prov === 'openai') {
+        keyInput.placeholder = "Paste OpenAI Key (sk-...)";
+        if (triggerUIChange) modelInput.value = 'gpt-4o-mini';
+      } else if (prov === 'anthropic') {
+        keyInput.placeholder = "Paste Anthropic Key (sk-ant-...)";
+        if (triggerUIChange) modelInput.value = 'claude-3-5-sonnet-latest';
+      }
+    }
+
+    function togglePasswordVisibility() {
+      const input = document.getElementById('apiKeyInput');
+      input.type = input.type === 'password' ? 'text' : 'password';
+    }
+
+    function saveApiKey() {
+      const keyVal = document.getElementById('apiKeyInput').value.trim();
+      const modelVal = document.getElementById('customModelInput').value.trim();
+      const tempVal = parseFloat(document.getElementById('temperatureSelect').value);
+
+      APP_CONFIG.apiKey = keyVal;
+      APP_CONFIG.model = modelVal;
+      APP_CONFIG.temperature = tempVal;
+
+      localStorage.setItem('sim_provider', APP_CONFIG.provider);
+      localStorage.setItem('sim_api_key', APP_CONFIG.apiKey);
+      localStorage.setItem('sim_model', APP_CONFIG.model);
+      localStorage.setItem('sim_temperature', APP_CONFIG.temperature);
+
+      updateApiStatusBadge();
+
+      // Show immediate confirmation inside the modal
+      const fb = document.getElementById('saveFeedback');
+      fb.className = "p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-2xs leading-relaxed block fade-in";
+      fb.innerHTML = `✓ Settings saved! Provider <strong>${APP_CONFIG.provider.toUpperCase()}</strong> with model <strong>${APP_CONFIG.model}</strong> is ready for role-play.`;
+
+      setTimeout(() => {
+        closeSettingsModal();
+        showToast('Settings & API Key saved successfully!', '✓');
+      }, 700);
+    }
+
+    function clearSavedKey() {
+      document.getElementById('apiKeyInput').value = '';
+      APP_CONFIG.apiKey = '';
+      localStorage.removeItem('sim_api_key');
+      updateApiStatusBadge();
+      showToast('API Key removed', '🗑️');
+    }
+
+    function showToast(msg, icon = '✓') {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastIcon').textContent = icon;
+      document.getElementById('toastMsg').textContent = msg;
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 2500);
+    }
   </script>
 </body>
 </html>
